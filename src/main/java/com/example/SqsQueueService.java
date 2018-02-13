@@ -1,16 +1,59 @@
 package com.example;
 
-import com.amazonaws.services.sqs.AmazonSQSClient;
+import com.amazonaws.services.sqs.AmazonSQS;
 
-public class SqsQueueService implements QueueService {
-  //
-  // Task 4: Optionally implement parts of me.
-  //
-  // This file is a placeholder for an AWS-backed implementation of QueueService.  It is included
-  // primarily so you can quickly assess your choices for method signatures in QueueService in
-  // terms of how well they map to the implementation intended for a production environment.
-  //
+import java.util.Optional;
 
-  public SqsQueueService(AmazonSQSClient sqsClient) {
+import static java.lang.Integer.parseInt;
+
+public class SqsQueueService implements QueueService<String> {
+
+  static final String APPROXIMATE_RECEIVE_COUNT = "ApproximateReceiveCount";
+
+  private final AmazonSQS sqsClient;
+
+  public SqsQueueService(AmazonSQS sqsClient) {
+    this.sqsClient = sqsClient;
+  }
+
+  @Override
+  public void push(String queueName, String messageBody) {
+    createQueueIfNeeded(queueName);
+
+    sqsClient.sendMessage(toUrl(queueName), messageBody);
+  }
+
+  @Override
+  public Optional<Message<String>> pull(String queueName) {
+    createQueueIfNeeded(queueName);
+
+    return sqsClient.receiveMessage(toUrl(queueName))
+        .getMessages()
+        .stream()
+        .findFirst()
+        .map(this::sqsMessageToMessage);
+  }
+
+  private Message<String> sqsMessageToMessage(com.amazonaws.services.sqs.model.Message sqsMessage) {
+    return Message.<String>builder()
+        .receiptHandle(sqsMessage.getReceiptHandle())
+        .body(sqsMessage.getBody())
+        .attempts(parseInt(sqsMessage.getAttributes().get(APPROXIMATE_RECEIVE_COUNT)))
+        .build();
+  }
+
+  @Override
+  public void delete(String queueName, String receiptHandle) {
+    createQueueIfNeeded(queueName);
+
+    sqsClient.deleteMessage(toUrl(queueName), receiptHandle);
+  }
+
+  private void createQueueIfNeeded(String queueName) {
+    sqsClient.createQueue(queueName);
+  }
+
+  private String toUrl(String queueName) {
+    return sqsClient.getQueueUrl(queueName).getQueueUrl();
   }
 }

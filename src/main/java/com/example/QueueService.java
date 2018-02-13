@@ -1,21 +1,28 @@
 package com.example;
 
-public interface QueueService {
+import java.util.Optional;
 
-  //
-  // Task 1: Define me.
-  //
-  // This interface should include the following methods.  You should choose appropriate
-  // signatures for these methods that prioritise simplicity of implementation for the range of
-  // intended implementations (in-memory, file, and SQS).  You may include additional methods if
-  // you choose.
-  //
-  // - push
-  //   pushes a message onto a queue.
-  // - pull
-  //   retrieves a single message from a queue.
-  // - delete
-  //   deletes a message from the queue that was received by pull().
-  //
+public interface QueueService<T> {
+
+  /**
+   * Pushes a message onto a queue.
+   * @param queueName the name of the queue
+   * @param messageBody the message to push
+   */
+  void push(String queueName, T messageBody);
+
+  /**
+   * Retrieves a single message from a queue.
+   * @param queueName the name of the queue
+   * @return a message
+   */
+  Optional<Message<T>> pull(String queueName);
+
+  /**
+   * Deletes a message from the queue that was received by pull().
+   * @param queueName the name of the queue
+   * @param receiptHandle a unique receipt handle from Message.receiptHandle
+   */
+  void delete(String queueName, String receiptHandle);
 
 }
